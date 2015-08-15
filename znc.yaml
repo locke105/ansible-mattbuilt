@@ -1,0 +1,47 @@
+---
+- name: user create and customize
+  hosts: znc.mattbuilt.com
+  sudo: true
+  tasks:
+   - name: build wheel group
+     group:
+       name: wheel
+       state: present
+   - name: create local user
+     user:
+       name: locke105
+       shell: /bin/bash
+       groups: 'wheel'
+       state: present
+   - name: install SSH key
+     authorized_key:
+       user: locke105
+       key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCbtWnF/IYQXSeEOVap73escEDejf5D+Hw4DDJ9Dl5tTDH9ugwqs00i3KdvIkUiyiJPE2TnT3ypQbMdm2g2JChPV5N8P2HDvKDpfDQHBMlBYMUDtzA+lZ13BZPntustV3hIuds9TjoEus1yK2tf6a8wi56VdSXktD/UHItQUidLr8IS00NQStRVmVtMx0UU5mTMH7CQzP1B7KK65npeGCcCZOeQ7cUcAEcBOlfPjlabm1OS1bx90ZJHt9UmBQFP4TH4LauL3h7QgD73HLs1pqrEdjN+r/YY0Wt2QAiGIWNFC7WFGivf/n80Zt8JJXaU/UiCf05CeLXfKMoBYCoHGpG7 locke105@battleaxe"
+       state: present
+   - name: setup sudo for wheel
+     lineinfile:
+       dest: '/etc/sudoers.d/wheel'
+       state: present
+       create: yes
+       regexp: '^%wheel'
+       line: '%wheel ALL=(ALL) NOPASSWD:ALL'
+       validate: 'visudo -cf %s'
+
+- name: install and setup ZNC
+  hosts: znc.mattbuilt.com
+  sudo: true
+  tasks:
+   - name: install ZNC package
+     apt:
+       name: znc
+       state: present
+   - name: setup cronjob for restart
+     cron:
+       minute: '*/10'
+       name: 'start znc'
+       state: present
+       user: "{{ item }}"
+       job: '/usr/bin/znc >/dev/null 2>&1'
+     with_items:
+       - locke105
+       
